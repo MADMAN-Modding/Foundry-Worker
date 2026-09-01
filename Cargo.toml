@@ -4,4 +4,9 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-serenity = "0.12.5"
+dotenv = "0.15.0"
+rand = "0.10.2"
+serenity = "0.12.4"
+sqlx = { version = "0.9.0", features = ["sqlite", "runtime-tokio"] }
+tokio = {version = "1.46.1", features = ["full"] }
+uuid = { version = "1.17.0", features = ["v4"] }
