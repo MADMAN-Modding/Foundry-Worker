@@ -7,6 +7,7 @@ pub struct ConnectionChecker {
     api_key: String
 }
 
+
 impl ConnectionChecker {
     pub fn new(bot: Arc<Bot>, api_key: String) -> Self {
         Self { bot, api_key }
@@ -17,6 +18,8 @@ impl ConnectionChecker {
         let timeout = Duration::from_secs(5);
         let client = reqwest::ClientBuilder::new().timeout(timeout).build()?;
         let response = client.get(request_url).header("x-api-key", self.api_key.clone()).send().await?;
+
+        
 
         let success = response.status().is_success();
 
@@ -33,7 +36,7 @@ impl ConnectionChecker {
 
             self.bot.send_disconnect(connected).await;
 
-            tokio::time::sleep(Duration::from_secs(5)).await;
+            tokio::time::sleep(Duration::from_secs(30)).await;
         }
     }
 }

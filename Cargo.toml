@@ -5,9 +5,11 @@ edition = "2024"
 
 [dependencies]
 dotenv = "0.15.0"
+log = "0.4.34"
 rand = "0.10.2"
 reqwest = "0.13.4"
 serenity = "0.12.4"
+simple_logger = "5.2.0"
 sqlx = { version = "0.9.0", features = ["sqlite", "runtime-tokio"] }
 tokio = {version = "1.46.1", features = ["full"] }
 uuid = { version = "1.17.0", features = ["v4"] }

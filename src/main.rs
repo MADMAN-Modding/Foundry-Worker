@@ -5,9 +5,15 @@ use foundry_worker::bot::{bot::Bot, connection_check::ConnectionChecker};
 use serenity::{
     Client, all::{GatewayIntents, Http}
 };
+use simple_logger::SimpleLogger;
 
 #[tokio::main]
 async fn main() {
+    SimpleLogger::new()
+        .with_level(log::LevelFilter::Warn)
+        .with_module_level("foundry_worker", log::LevelFilter::Debug).init().unwrap();
+
+
     // Load environment variables from the .env file
     dotenv().ok();
 
