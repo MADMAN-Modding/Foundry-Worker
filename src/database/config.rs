@@ -1,7 +1,8 @@
 use log::debug;
 use serenity::all::{ChannelId, GuildId, UserId};
 use sqlx::{
-    AssertSqlSafe, FromRow, Pool, Row, Sqlite, sqlite::{SqliteQueryResult, SqliteRow},
+    AssertSqlSafe, FromRow, Pool, Row, Sqlite,
+    sqlite::{SqliteQueryResult, SqliteRow},
 };
 
 use crate::util::logging::log_result;
@@ -12,11 +13,12 @@ use crate::util::logging::log_result;
 /// |----------|-----------------|-------------|---------------------------------|-------------------------------------|
 /// | Guild ID | Dungeon Masters | Admin Users | Channel to Send Foundry Updates | API key for Foundry REST API Plugin |
 pub struct Config {
-    _guid: GuildId,
+    guid: GuildId,
     dms: Vec<UserId>,
     admins: Vec<UserId>,
     foundry_status_channel: ChannelId,
     api_key: String,
+    endpoint: String
 }
 
 impl Config {
@@ -27,13 +29,15 @@ impl Config {
         admins: Vec<UserId>,
         foundry_status_channel: ChannelId,
         api_key: String,
+        endpoint: String
     ) -> Self {
         Self {
-            _guid: guid,
+            guid,
             dms,
             admins,
             foundry_status_channel,
             api_key,
+            endpoint
         }
     }
 
@@ -55,6 +59,14 @@ impl Config {
     pub fn get_api_key(&self) -> String {
         self.api_key.clone()
     }
+
+    pub fn get_endpoint(&self) -> String {
+        self.endpoint.clone()
+    }
+
+    pub fn get_guid(&self) -> GuildId {
+        self.guid
+    }
 }
 
 impl<'r> FromRow<'r, SqliteRow> for Config {
@@ -64,6 +76,7 @@ impl<'r> FromRow<'r, SqliteRow> for Config {
         let admins_json: String = row.try_get("admins")?;
         let foundry_status_channel: i64 = row.try_get("foundry_status_channel")?;
         let api_key: String = row.try_get("api_key")?;
+        let endpoint: String = row.try_get("endpoint")?;
 
         let dms: Vec<i64> =
             serde_json::from_str(&dms_json).map_err(|e| sqlx::Error::ColumnDecode {
@@ -77,7 +90,7 @@ impl<'r> FromRow<'r, SqliteRow> for Config {
             })?;
 
         Ok(Config {
-            _guid: GuildId::new(guid as u64),
+            guid: GuildId::new(guid as u64),
             dms: dms.into_iter().map(|id| UserId::new(id as u64)).collect(),
             admins: admins
                 .into_iter()
@@ -85,23 +98,26 @@ impl<'r> FromRow<'r, SqliteRow> for Config {
                 .collect(),
             foundry_status_channel: ChannelId::new(foundry_status_channel as u64),
             api_key,
+            endpoint
         })
     }
 }
 
-pub async fn load(db: &Pool<Sqlite>, guid: GuildId) -> Result<Config, sqlx::Error> {
+pub async fn load(db: &Pool<Sqlite>, guid: i64) -> Result<Config, sqlx::Error> {
+    debug!("{guid}");
+
     let result = sqlx::query_as::<_, Config>(
         r#"
             SELECT * FROM config
-            WHERE guid = ?1
-            LIMIT 1
+            WHERE guid IS ?1
+            LIMIT 1;
         "#,
     )
-    .bind(guid.get() as i64)
+    .bind(guid)
     .fetch_one(db)
     .await;
 
-    log_result(&result, "Loaded Config");
+    log_result(&result, "Load Config");
 
     result
 }
@@ -120,12 +136,26 @@ where
     debug!("{}", sql);
 
     let result = sqlx::query(AssertSqlSafe(sql))
-        .bind(value)
         .bind(guid.get() as i64)
+        .bind(value)
         .execute(db)
         .await;
 
     log_result(&result, "Set Foundry Status Channel");
+
+    result
+}
+
+pub async fn get_all_config(db: &Pool<Sqlite>) -> Result<Vec<Config>, sqlx::Error> {
+    let sql = format!(r#"SELECT ALL * FROM config"#);
+
+    debug!("{}", sql);
+
+    let result = sqlx::query_as::<_, Config>(AssertSqlSafe(sql))
+        .fetch_all(db)
+        .await;
+
+    log_result(&result, "Find any Config Data");
 
     result
 }

@@ -1,11 +1,12 @@
 use std::{env, sync::Arc};
 
 use dotenv::dotenv;
-use foundry_worker::bot::{bot::Bot, connection_check::ConnectionChecker};
+use foundry_worker::{bot::{bot::Bot, connection_check::ConnectionChecker}, util::cache::Cache};
 use serenity::{
     Client, all::{GatewayIntents, Http}
 };
 use simple_logger::SimpleLogger;
+use tokio::sync::Mutex;
 
 #[tokio::main]
 async fn main() {
@@ -44,8 +45,10 @@ async fn main() {
 
     let http = Arc::new(Http::new(&token));
 
+    let cache_data = Arc::new(Mutex::new(Cache::new()));
+
     // Create the bot instance with the database connection.
-    let bot = Bot::new(database, api_key.clone(), http);
+    let bot = Bot::new(database, api_key.clone(), http, cache_data);
 
     let connection_check = ConnectionChecker::new(Arc::from(bot.clone()), api_key);
     connection_check.start_thread();

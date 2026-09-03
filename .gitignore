@@ -3,3 +3,5 @@ Cargo.lock
 .env
 database.sqlite
 data
+.vscode
+.DS_Store

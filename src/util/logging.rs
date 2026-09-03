@@ -7,6 +7,13 @@ where E: fmt::Display + Error
 {
     match result {
         Ok(_) => info!("{}", message),
-        Err(e) => warn!("{}: {}", message, e)
+        Err(e) => warn!("Failed to {}: {}", message, e)
     }
 }
+
+pub fn log_option<V>(option: &Option<V>, message: &str) {
+    match option {
+        Some(_) => info!("{}", message),
+        None => warn!("Failed to: {}", message)
+    }
+} 

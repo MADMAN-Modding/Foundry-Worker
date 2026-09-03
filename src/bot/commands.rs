@@ -5,7 +5,7 @@ use serenity::{
     }, builder::{CreateEmbed, CreateInteractionResponseMessage, CreateMessage}, model::{Color, application::ResolvedValue},
 };
 
-use crate::{bot::bot::Bot, database::config::set_value, util::logging::log_result};
+use crate::{bot::bot::Bot, database::config::set_value, util::{cache::CacheData, logging::log_result}};
 
 pub fn create_commands() -> Vec<CreateCommand> {
     vec![set_foundry_status_channel_command()]
@@ -83,6 +83,24 @@ pub async fn set_foundry_status_channel(
         &res,
         &format!("Foundry VTT Status Channel set to: {}", channel_id.id),
     );
+
+    let cache = bot.get_cache();
+
+    let mut data = cache.lock().await;
+
+    let no_mut_data = data.clone();
+    
+    let cache_data = no_mut_data.get_cache_data(guid.get() as i64);
+
+    if cache_data.is_none() {
+        let cache_data = CacheData::default();
+
+        cache_data.set_foundry_status_channel_id(channel_id.id);
+
+        data.set_cache_data(guid.get() as i64, &cache_data);
+    } else {
+        data.set_cache_data(guid.get() as i64, &cache_data.unwrap());
+    }
 
     CreateInteractionResponse::Message(
         CreateInteractionResponseMessage::new()
