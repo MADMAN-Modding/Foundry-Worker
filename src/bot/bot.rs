@@ -2,23 +2,25 @@ use std::sync::Arc;
 
 use log::debug;
 use serenity::{
-    all::{
-        Command, Context, CreateEmbed, CreateMessage, EventHandler, Http, Interaction,
-        Ready,
-    }, async_trait,
+    all::{Command, Context, CreateEmbed, CreateMessage, EventHandler, Http, Interaction, Ready},
+    async_trait,
+    model::{Color, id::ChannelId},
 };
 use sqlx::{Pool, Sqlite};
 use tokio::sync::Mutex;
 
 use crate::{
-    bot::commands::{create_commands, set_foundry_status_channel}, database::config::load, util::logging::log_result,
+    bot::commands::{
+        add_admin, add_dm, create_commands, remove_admin, remove_dm, set_foundry_status_channel,
+    },
+    util::{database::load, logging::log_result, wrappers::quick_create_interaction_response},
 };
 
 #[derive(Clone)]
 pub struct Bot {
     database: sqlx::SqlitePool,
     http: Arc<Http>,
-    previous_con_state: Arc<Mutex<bool>>
+    previous_con_state: Arc<Mutex<bool>>,
 }
 
 impl Bot {
@@ -26,17 +28,27 @@ impl Bot {
         Self {
             database,
             http,
-            previous_con_state: Arc::from(Mutex::from(false))
+            previous_con_state: Arc::from(Mutex::from(false)),
         }
     }
 
     pub async fn send_disconnect(&self, new_con: bool) {
         let mut previous_con_state = self.previous_con_state.lock().await;
 
-        let channel_id = load(&self.database).await.map_err(|_| return).unwrap().get_foundry_status_channel();
+        let res_channel_id = load(&self.database).await.map_err(|_| return);
+
+        let channel_id: ChannelId;
+
+        if res_channel_id.is_ok() {
+            channel_id = res_channel_id.unwrap().get_foundry_status_channel();
+        } else {
+            return;
+        }
 
         if new_con && !*previous_con_state {
-            let embed = CreateEmbed::new().title("FoundryVTT has Reconnected");
+            let embed = CreateEmbed::new()
+                .title("FoundryVTT has Reconnected")
+                .color(Color::DARK_GREEN);
             let builder = CreateMessage::new().embed(embed).tts(true);
 
             debug!("Stat ChannelId: {}", channel_id.get());
@@ -45,7 +57,9 @@ impl Bot {
 
             log_result(&res, "Sent Reconnect Update");
         } else if !new_con && *previous_con_state {
-            let embed = CreateEmbed::new().title("FoundryVTT has Disconnected");
+            let embed = CreateEmbed::new()
+                .title("FoundryVTT has Disconnected")
+                .color(Color::RED);
             let builder = CreateMessage::new().embed(embed).tts(true);
 
             let res = channel_id.send_message(&self.http, builder).await;
@@ -70,17 +84,26 @@ impl EventHandler for Bot {
     async fn interaction_create(&self, context: Context, interaction: Interaction) {
         if let Some(command) = interaction.command() {
             match command.data.name.as_str() {
-                "set_foundry_status_channel" => {
-                    command
-                        .create_response(
-                            &context.http,
-                            set_foundry_status_channel(self, &context, &command).await,
-                        )
-                        .await
-                        .ok();
+                "set_foundry_status_channel" => command.create_response(
+                    &context.http,
+                    set_foundry_status_channel(self, &context, &command).await,
+                ),
+                "add_dm" => {
+                    command.create_response(&context.http, add_dm(self, &context, &command).await)
                 }
-                _ => {}
+                "remove_dm" => command
+                    .create_response(&context.http, remove_dm(self, &context, &command).await),
+                "add_admin" => command
+                    .create_response(&context.http, add_admin(self, &context, &command).await),
+                "remove_admin" => command
+                    .create_response(&context.http, remove_admin(self, &context, &command).await),
+                _ => command.create_response(
+                    &context.http,
+                    quick_create_interaction_response("Invalid Command".to_string(), true),
+                ),
             }
+            .await
+            .ok();
         }
     }
 

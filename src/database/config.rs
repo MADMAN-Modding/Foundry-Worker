@@ -1,11 +1,9 @@
-use log::debug;
-use serenity::all::{ChannelId, GuildId, UserId};
-use sqlx::{
-    AssertSqlSafe, FromRow, Pool, Row, Sqlite,
-    sqlite::{SqliteQueryResult, SqliteRow},
-};
+use std::fmt;
 
-use crate::util::logging::log_result;
+use serenity::{all::{ChannelId, GuildId, UserId}};
+use sqlx::{
+    FromRow, Row, sqlite::SqliteRow,
+};
 
 /// Config Structure to Represent Row in config table
 ///
@@ -35,6 +33,10 @@ impl Config {
         }
     }
 
+    pub fn default() -> Self {
+        Self { guid: GuildId::default(), dms: Vec::new(), admins: Vec::new(), foundry_status_channel: ChannelId::default() }
+    }
+
     /// Checks for user to be a DM
     pub fn check_for_dm(&self, id: UserId) -> bool {
         self.dms.contains(&id)
@@ -52,6 +54,49 @@ impl Config {
 
     pub fn get_guid(&self) -> GuildId {
         self.guid
+    }
+
+    pub fn get_dms(&self) -> Vec<UserId> {
+        self.dms.clone()
+    }
+
+    pub fn get_admins(&self) -> Vec<UserId> {
+        self.admins.clone()
+    }
+
+    pub fn set_foundry_status_channel(&mut self, foundry_status_channel: ChannelId) {
+        self.foundry_status_channel = foundry_status_channel;
+    }
+
+    pub fn set_dms(&mut self, dms: Vec<UserId>) {
+        self.dms = dms
+    }
+
+    pub fn set_admins(&mut self, admins: Vec<UserId>) {
+        self.admins = admins;
+    }
+
+    pub fn set_guid(&mut self, guid: GuildId) {
+        self.guid = guid;
+    }
+}
+
+impl fmt::Display for Config {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut dms = String::from("[\n");
+        let mut admins = String::from("[\n");
+
+        for dm in self.dms.clone() {
+            dms += &format!("{},\n", &dm.get().to_string());
+        }
+        dms += "]";
+
+        for admin in self.admins.clone() {
+            admins += &format!("{},\n", &admin.get().to_string());
+        }
+        admins += "]";
+
+        write!(f, "Config Outline\nGUID: {}\nFoundry Status Channel: {}\nDMs: {}\nAdmins: {}", self.guid, self.foundry_status_channel, dms, admins)
     }
 }
 
@@ -83,57 +128,4 @@ impl<'r> FromRow<'r, SqliteRow> for Config {
             foundry_status_channel: ChannelId::new(foundry_status_channel as u64),
         })
     }
-}
-
-pub async fn load(db: &Pool<Sqlite>) -> Result<Config, sqlx::Error> {
-    let result = sqlx::query_as::<_, Config>(
-        r#"
-            SELECT * FROM config
-            LIMIT 1;
-        "#,
-    )
-    .fetch_one(db)
-    .await;
-
-    log_result(&result, "Load Config");
-
-    result
-}
-
-pub async fn set_value<V>(
-    db: &Pool<Sqlite>,
-    guid: GuildId,
-    value: V,
-    column: &str,
-) -> Result<SqliteQueryResult, sqlx::Error>
-where
-    V: for<'a> sqlx::Encode<'a, Sqlite> + sqlx::Type<Sqlite> + Send,
-{
-    let sql = format!(r#"REPLACE INTO config (guid, {column}) VALUES (?1, ?2)"#);
-
-    debug!("{}", sql);
-
-    let result = sqlx::query(AssertSqlSafe(sql))
-        .bind(guid.get() as i64)
-        .bind(value)
-        .execute(db)
-        .await;
-
-    log_result(&result, "Set Foundry Status Channel");
-
-    result
-}
-
-pub async fn get_all_config(db: &Pool<Sqlite>) -> Result<Vec<Config>, sqlx::Error> {
-    let sql = format!(r#"SELECT ALL * FROM config"#);
-
-    debug!("{}", sql);
-
-    let result = sqlx::query_as::<_, Config>(AssertSqlSafe(sql))
-        .fetch_all(db)
-        .await;
-
-    log_result(&result, "Find any Config Data");
-
-    result
 }

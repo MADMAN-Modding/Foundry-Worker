@@ -2,11 +2,11 @@ use std::env;
 
 use tokio::sync::OnceCell;
 
-pub const BOT_TOKEN: tokio::sync::OnceCell<std::string::String> = OnceCell::<String>::const_new();
-pub const API_KEY: tokio::sync::OnceCell<std::string::String> = OnceCell::<String>::const_new();
-pub const ENDPOINT: tokio::sync::OnceCell<std::string::String> = OnceCell::<String>::const_new();
+pub static BOT_TOKEN: tokio::sync::OnceCell<std::string::String> = OnceCell::<String>::const_new();
+pub static API_KEY: tokio::sync::OnceCell<std::string::String> = OnceCell::<String>::const_new();
+pub static ENDPOINT: tokio::sync::OnceCell<std::string::String> = OnceCell::<String>::const_new();
 
-pub fn inti() {
+pub fn init() {
     // Load environment variables from the .env file
     dotenv::dotenv().ok();
 

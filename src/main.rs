@@ -12,8 +12,9 @@ async fn main() {
         .with_level(log::LevelFilter::Warn)
         .with_module_level("foundry_worker", log::LevelFilter::Debug).init().unwrap();
 
-    constants::inti();
+    constants::init();
 
+    
     let bot_token = constants::BOT_TOKEN.get().unwrap().clone();
 
     unsafe {
