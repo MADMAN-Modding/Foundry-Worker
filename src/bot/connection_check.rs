@@ -1,10 +1,9 @@
 use std::{sync::Arc, time::Duration};
 
-use log::{debug, info};
+use log::{info, warn};
+use serde_json::Value;
 
-use crate::{
-    bot::bot::Bot, constants, util::logging::log_result,
-};
+use crate::{bot::bot::Bot, constants::{self, WORLD_ID}, util::logging::log_result};
 
 pub struct ConnectionChecker {
     bot: Arc<Bot>,
@@ -32,11 +31,28 @@ impl ConnectionChecker {
 
         log_result(&response, "Format Connection Request");
 
+        // Change to Response data type and throw error if it fails
         let response = response?;
 
-        let success = response.status().is_success();
+        // Parse payload
+        let payload: Value = response
+            .json()
+            .await
+            .map_err(|_| {
+                warn!("Invalid JSON in request response");
+                return false;
+            })
+            .unwrap();
 
-        debug!("{}", response.status());
+        let mut success: bool = false;
+        
+        for client in payload["clients"].as_array().unwrap().iter() {
+            let world_id = client.get("worldId").unwrap().as_str().unwrap();
+
+            if world_id == WORLD_ID.get().unwrap() {
+                success = client["isOnline"].as_bool().unwrap();
+            }
+        }
 
         Ok(success)
     }
@@ -48,14 +64,9 @@ impl ConnectionChecker {
     /// Runs the loop for checking endpoints
     async fn thread_runner(&self) {
         loop {
-                let connected = self.test_connection().await.unwrap_or(false);
+            let connected = self.test_connection().await.unwrap_or(false);
 
-                self.bot
-                    .send_disconnect(
-                        connected
-                    )
-                    .await;
-            
+            self.bot.send_disconnect(connected).await;
 
             // Wait a minute between polls
             tokio::time::sleep(Duration::from_secs(60)).await;

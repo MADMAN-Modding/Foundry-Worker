@@ -85,8 +85,10 @@ pub async fn set_foundry_status_channel(
 
     let guid = command.guild_id.unwrap();
 
+    // Make a default config
     let mut config = Config::default();
 
+    // Assign config to loaded config or set the guid if it can't be loaded
     let _ = load(bot.get_db())
         .await
         .map(|v| config = v)
@@ -133,8 +135,10 @@ pub async fn add_dm(
 
     let guid = command.guild_id.unwrap();
 
+    // Make a default config
     let mut config = Config::default();
 
+    // Assign config to loaded config or set the guid if it can't be loaded
     let _ = load(bot.get_db())
         .await
         .map(|v| config = v)
@@ -186,8 +190,10 @@ pub async fn remove_dm(
 ) -> CreateInteractionResponse {
     let guid = command.guild_id.unwrap();
 
+    // Make a default config
     let mut config = Config::default();
 
+    // Assign config to loaded config or set the guid if it can't be loaded
     let _ = load(bot.get_db())
         .await
         .map(|v| config = v)
@@ -244,8 +250,10 @@ pub async fn add_admin(
 
     let guid = command.guild_id.unwrap();
 
+    // Make a default config
     let mut config = Config::default();
 
+    // Assign config to loaded config or set the guid if it can't be loaded
     let _ = load(bot.get_db())
         .await
         .map(|v| config = v)
@@ -291,8 +299,10 @@ pub async fn remove_admin(
 ) -> CreateInteractionResponse {
     let guid = command.guild_id.unwrap();
 
+    // Make a default config
     let mut config = Config::default();
 
+    // Assign config to loaded config or set the guid if it can't be loaded
     let _ = load(bot.get_db())
         .await
         .map(|v| config = v)
