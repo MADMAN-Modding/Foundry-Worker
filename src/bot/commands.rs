@@ -2,13 +2,15 @@ use serenity::{
     all::{
         CommandInteraction, CommandOptionType, CreateCommand, CreateCommandOption,
         CreateInteractionResponse, prelude::Context,
-    }, builder::{CreateEmbed, CreateInteractionResponseMessage, CreateMessage}, model::{Color, application::ResolvedValue},
+    },
+    builder::{CreateEmbed, CreateInteractionResponseMessage, CreateMessage},
+    model::{Color, application::ResolvedValue},
 };
 
-use crate::{bot::bot::Bot, database::config::set_value, util::{cache::CacheData, logging::log_result}};
+use crate::{bot::bot::Bot, database::config::set_value, util::logging::log_result};
 
 pub fn create_commands() -> Vec<CreateCommand> {
-    vec![set_foundry_status_channel_command()]
+    vec![set_foundry_status_channel_command(), add_dm()]
 }
 
 fn set_foundry_status_channel_command() -> CreateCommand {
@@ -46,7 +48,9 @@ pub async fn set_foundry_status_channel(
     let channel = channel_id.id.to_channel(&ctx.http).await.unwrap();
     let Some(guild_channel) = channel.guild() else {
         return CreateInteractionResponse::Message(
-            CreateInteractionResponseMessage::new().content("That's not a valid text channel."),
+            CreateInteractionResponseMessage::new()
+                .content("That's not a valid text channel.")
+                .ephemeral(true),
         );
     };
 
@@ -61,7 +65,7 @@ pub async fn set_foundry_status_channel(
             CreateInteractionResponseMessage::new().content(format!(
                 "I don't have permission to send messages in <#{}>. Please update my permissions and try again.",
                 channel_id.id
-            )),
+            )).ephemeral(true),
         );
     }
 
@@ -74,7 +78,9 @@ pub async fn set_foundry_status_channel(
     .await
     .unwrap();
 
-    let embed = CreateEmbed::new().title("This is now the FoundryVTT Status Channel").color(Color::BLITZ_BLUE);
+    let embed = CreateEmbed::new()
+        .title("This is now the FoundryVTT Status Channel")
+        .color(Color::BLITZ_BLUE);
     let builder = CreateMessage::new().embed(embed).tts(true);
 
     let res = channel_id.id.send_message(&ctx.http, builder).await;
@@ -84,26 +90,18 @@ pub async fn set_foundry_status_channel(
         &format!("Foundry VTT Status Channel set to: {}", channel_id.id),
     );
 
-    let cache = bot.get_cache();
-
-    let mut data = cache.lock().await;
-
-    let no_mut_data = data.clone();
-    
-    let cache_data = no_mut_data.get_cache_data(guid.get() as i64);
-
-    if cache_data.is_none() {
-        let cache_data = CacheData::default();
-
-        cache_data.set_foundry_status_channel_id(channel_id.id);
-
-        data.set_cache_data(guid.get() as i64, &cache_data);
-    } else {
-        data.set_cache_data(guid.get() as i64, &cache_data.unwrap());
-    }
-
     CreateInteractionResponse::Message(
         CreateInteractionResponseMessage::new()
-            .content(format!("Channel Updated to <#{}>", channel_id.id)),
+            .content(format!("Channel Updated to <#{}>", channel_id.id))
+            .ephemeral(true),
     )
+}
+
+fn add_dm() -> CreateCommand {
+    CreateCommand::new("add_dm")
+        .description("Add a Dungeon Master to allow them to run DM Commands")
+        .add_option(
+            CreateCommandOption::new(CommandOptionType::User, "DM", "User to become a DM")
+                .required(true),
+        )
 }

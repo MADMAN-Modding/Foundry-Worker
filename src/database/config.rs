@@ -9,16 +9,14 @@ use crate::util::logging::log_result;
 
 /// Config Structure to Represent Row in config table
 ///
-/// |   guid   | dms             | admins      | foundry_status_channel          | api_key                             |
-/// |----------|-----------------|-------------|---------------------------------|-------------------------------------|
-/// | Guild ID | Dungeon Masters | Admin Users | Channel to Send Foundry Updates | API key for Foundry REST API Plugin |
+/// |   guid   | dms             | admins      | foundry_status_channel          |
+/// |----------|-----------------|-------------|---------------------------------|
+/// | Guild ID | Dungeon Masters | Admin Users | Channel to Send Foundry Updates |
 pub struct Config {
     guid: GuildId,
     dms: Vec<UserId>,
     admins: Vec<UserId>,
-    foundry_status_channel: ChannelId,
-    api_key: String,
-    endpoint: String
+    foundry_status_channel: ChannelId
 }
 
 impl Config {
@@ -27,17 +25,13 @@ impl Config {
         guid: GuildId,
         dms: Vec<UserId>,
         admins: Vec<UserId>,
-        foundry_status_channel: ChannelId,
-        api_key: String,
-        endpoint: String
+        foundry_status_channel: ChannelId
     ) -> Self {
         Self {
             guid,
             dms,
             admins,
-            foundry_status_channel,
-            api_key,
-            endpoint
+            foundry_status_channel
         }
     }
 
@@ -56,14 +50,6 @@ impl Config {
         self.foundry_status_channel
     }
 
-    pub fn get_api_key(&self) -> String {
-        self.api_key.clone()
-    }
-
-    pub fn get_endpoint(&self) -> String {
-        self.endpoint.clone()
-    }
-
     pub fn get_guid(&self) -> GuildId {
         self.guid
     }
@@ -75,8 +61,6 @@ impl<'r> FromRow<'r, SqliteRow> for Config {
         let dms_json: String = row.try_get("dms")?;
         let admins_json: String = row.try_get("admins")?;
         let foundry_status_channel: i64 = row.try_get("foundry_status_channel")?;
-        let api_key: String = row.try_get("api_key")?;
-        let endpoint: String = row.try_get("endpoint")?;
 
         let dms: Vec<i64> =
             serde_json::from_str(&dms_json).map_err(|e| sqlx::Error::ColumnDecode {
@@ -97,23 +81,17 @@ impl<'r> FromRow<'r, SqliteRow> for Config {
                 .map(|id| UserId::new(id as u64))
                 .collect(),
             foundry_status_channel: ChannelId::new(foundry_status_channel as u64),
-            api_key,
-            endpoint
         })
     }
 }
 
-pub async fn load(db: &Pool<Sqlite>, guid: i64) -> Result<Config, sqlx::Error> {
-    debug!("{guid}");
-
+pub async fn load(db: &Pool<Sqlite>) -> Result<Config, sqlx::Error> {
     let result = sqlx::query_as::<_, Config>(
         r#"
             SELECT * FROM config
-            WHERE guid IS ?1
             LIMIT 1;
         "#,
     )
-    .bind(guid)
     .fetch_one(db)
     .await;
 

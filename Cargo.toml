@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 dotenv = "0.15.0"
 log = "0.4.34"
+once_cell = "1.21.4"
 poise = "0.6.2"
 rand = "0.10.2"
 reqwest = "0.13.4"

@@ -1,9 +1,9 @@
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
 use log::debug;
 use serenity::{
     all::{
-        ChannelId, Command, Context, CreateEmbed, CreateMessage, EventHandler, Http, Interaction,
+        Command, Context, CreateEmbed, CreateMessage, EventHandler, Http, Interaction,
         Ready,
     }, async_trait,
 };
@@ -11,37 +11,31 @@ use sqlx::{Pool, Sqlite};
 use tokio::sync::Mutex;
 
 use crate::{
-    bot::commands::{create_commands, set_foundry_status_channel}, util::{cache::Cache, logging::log_result},
+    bot::commands::{create_commands, set_foundry_status_channel}, database::config::load, util::logging::log_result,
 };
 
 #[derive(Clone)]
 pub struct Bot {
     database: sqlx::SqlitePool,
-    api_key: String,
     http: Arc<Http>,
-    previous_con_state: Arc<Mutex<HashMap<i64, bool>>>,
-    cache: Arc<Mutex<Cache>>
+    previous_con_state: Arc<Mutex<bool>>
 }
 
 impl Bot {
-    pub fn new(database: sqlx::SqlitePool, api_key: String, http: Arc<Http>, cache: Arc<Mutex<Cache>>) -> Bot {
+    pub fn new(database: sqlx::SqlitePool, http: Arc<Http>) -> Bot {
         Self {
             database,
-            api_key,
             http,
-            previous_con_state: Arc::from(Mutex::from(HashMap::new())),
-            cache
+            previous_con_state: Arc::from(Mutex::from(false))
         }
     }
 
-    pub async fn send_disconnect(&self, new_con: bool, channel_id: ChannelId, guid: i64) {
+    pub async fn send_disconnect(&self, new_con: bool) {
         let mut previous_con_state = self.previous_con_state.lock().await;
 
-        let prev_con_state = *previous_con_state.get(&guid).unwrap_or(&false);
+        let channel_id = load(&self.database).await.map_err(|_| return).unwrap().get_foundry_status_channel();
 
-        debug!("Conn for {} is {}", guid, new_con);
-
-        if new_con && !prev_con_state {
+        if new_con && !*previous_con_state {
             let embed = CreateEmbed::new().title("FoundryVTT has Reconnected");
             let builder = CreateMessage::new().embed(embed).tts(true);
 
@@ -50,7 +44,7 @@ impl Bot {
             let res = channel_id.send_message(&self.http, builder).await;
 
             log_result(&res, "Sent Reconnect Update");
-        } else if !new_con && prev_con_state {
+        } else if !new_con && *previous_con_state {
             let embed = CreateEmbed::new().title("FoundryVTT has Disconnected");
             let builder = CreateMessage::new().embed(embed).tts(true);
 
@@ -59,19 +53,15 @@ impl Bot {
             log_result(&res, "Sent Reconnect Update");
         }
 
-        (*previous_con_state).insert(guid, new_con);
+        *previous_con_state = new_con;
     }
 
     pub fn get_db(&self) -> &Pool<Sqlite> {
         &self.database
     }
 
-    pub fn get_cache(&self) -> &Arc<Mutex<Cache>> {
-        &self.cache
-    }
-
-    pub fn get_api_key(&self) -> String {
-        self.api_key.clone()
+    pub async fn get_prev_con_state(&self) -> bool {
+        *self.previous_con_state.lock().await
     }
 }
 

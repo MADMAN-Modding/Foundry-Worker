@@ -1,12 +1,10 @@
 use std::{env, sync::Arc};
 
-use dotenv::dotenv;
-use foundry_worker::{bot::{bot::Bot, connection_check::ConnectionChecker}, util::cache::Cache};
+use foundry_worker::{bot::{bot::Bot, connection_check::ConnectionChecker}, constants};
 use serenity::{
     Client, all::{GatewayIntents, Http}
 };
 use simple_logger::SimpleLogger;
-use tokio::sync::Mutex;
 
 #[tokio::main]
 async fn main() {
@@ -14,17 +12,13 @@ async fn main() {
         .with_level(log::LevelFilter::Warn)
         .with_module_level("foundry_worker", log::LevelFilter::Debug).init().unwrap();
 
+    constants::inti();
 
-    // Load environment variables from the .env file
-    dotenv().ok();
+    let bot_token = constants::BOT_TOKEN.get().unwrap().clone();
 
     unsafe {
         env::set_var("DATABASE_URL", "sqlite://database.sqlite");
     }
-
-    // Configure the client with your Discord bot token in the environment.
-    let token = env::var("DISCORD_TOKEN").expect("Expected DISCORD_TOKEN to be set in .env");
-    let api_key = env::var("API_KEY").expect("Expected API_KEY to be set in .env");
 
     // Initiate a connection to the database file, creating the file if required.
     let database = sqlx::sqlite::SqlitePoolOptions::new()
@@ -43,21 +37,19 @@ async fn main() {
         .await
         .expect("Couldn't run database migrations");
 
-    let http = Arc::new(Http::new(&token));
-
-    let cache_data = Arc::new(Mutex::new(Cache::new()));
+    let http = Arc::new(Http::new(&bot_token));
 
     // Create the bot instance with the database connection.
-    let bot = Bot::new(database, api_key.clone(), http, cache_data);
+    let bot = Bot::new(database, http);
 
-    let connection_check = ConnectionChecker::new(Arc::from(bot.clone()), api_key);
+    let connection_check = ConnectionChecker::new(Arc::from(bot.clone()));
     connection_check.start_thread();
 
     // Create a new client with the bot token and intents, and set the event handler to the bot.
     let intents = GatewayIntents::GUILD_MESSAGES
         | GatewayIntents::DIRECT_MESSAGES
         | GatewayIntents::MESSAGE_CONTENT;
-    let mut client = Client::builder(&token, intents)
+    let mut client = Client::builder(&bot_token, intents)
         .event_handler(bot)
         .await
         .expect("Err creating client");
