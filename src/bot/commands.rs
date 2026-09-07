@@ -24,6 +24,7 @@ pub fn create_commands() -> Vec<CreateCommand> {
         remove_dm_command(),
         add_admin_command(),
         remove_admin_command(),
+        set_world_id_command(),
     ]
 }
 
@@ -144,7 +145,21 @@ pub async fn add_dm(
         .map(|v| config = v)
         .map_err(|_| config.set_guid(guid));
 
-    if !config.check_for_admin(command.user.id) {
+    let cmd_user = &command.member;
+
+    if cmd_user.is_none() {
+        return quick_create_interaction_response("Internal Server Error".to_string(), true);
+    }
+
+    let cmd_user = cmd_user.as_ref().unwrap();
+
+    let is_admin = cmd_user
+        .permissions
+        .and_then(|m| Some(m))
+        .map(|perms| perms.contains(Permissions::ADMINISTRATOR))
+        .unwrap_or(false);
+
+    if !(config.check_for_admin(cmd_user.user.id) || is_admin) {
         return quick_create_interaction_response(
             "Invalid Permission Level you must be an Administrator".to_string(),
             true,
@@ -199,7 +214,21 @@ pub async fn remove_dm(
         .map(|v| config = v)
         .map_err(|_| config.set_guid(guid));
 
-    if !config.check_for_admin(command.user.id) {
+    let cmd_user = &command.member;
+
+    if cmd_user.is_none() {
+        return quick_create_interaction_response("Internal Server Error".to_string(), true);
+    }
+
+    let cmd_user = cmd_user.as_ref().unwrap();
+
+    let is_admin = cmd_user
+        .permissions
+        .and_then(|m| Some(m))
+        .map(|perms| perms.contains(Permissions::ADMINISTRATOR))
+        .unwrap_or(false);
+
+    if !(config.check_for_admin(cmd_user.user.id) || is_admin) {
         return quick_create_interaction_response(
             "Invalid Permission Level you must be an Administrator".to_string(),
             true,
@@ -331,4 +360,74 @@ pub async fn remove_admin(
     log_result(&res, "Set Admins");
 
     quick_create_interaction_response(format!("Removed <@{}> as an Admin", target_user.id), true)
+}
+
+fn set_world_id_command() -> CreateCommand {
+    CreateCommand::new("set_world_id")
+        .description("Set the id of the World for API calls")
+        .add_option(
+            CreateCommandOption::new(
+                CommandOptionType::String,
+                "id",
+                "WorldId to use in the API calls",
+            )
+            .required(true),
+        )
+}
+
+pub async fn set_world_id(
+    bot: &Bot,
+    _ctx: &Context,
+    command: &CommandInteraction,
+) -> CreateInteractionResponse {
+    let world_id = command
+        .data
+        .options()
+        .iter()
+        .find(|option| option.name == "id")
+        .and_then(|option| match option.value {
+            ResolvedValue::String(id) => Some(id),
+            _ => None,
+        })
+        .unwrap();
+
+    let guid = command.guild_id.unwrap();
+
+    // Make a default config
+    let mut config = Config::default();
+
+    // Assign config to loaded config or set the guid if it can't be loaded
+    let _ = load(bot.get_db())
+        .await
+        .map(|v| config = v)
+        .map_err(|_| config.set_guid(guid));
+
+    let cmd_user = &command.member;
+
+    if cmd_user.is_none() {
+        return quick_create_interaction_response("Internal Server Error".to_string(), true);
+    }
+
+    let cmd_user = cmd_user.as_ref().unwrap();
+
+    let is_admin = cmd_user
+        .permissions
+        .and_then(|m| Some(m))
+        .map(|perms| perms.contains(Permissions::ADMINISTRATOR))
+        .unwrap_or(false);
+
+    if !(config.check_for_admin(cmd_user.user.id) || is_admin) {
+        return quick_create_interaction_response(
+            "Invalid Permission Level you must be an Administrator".to_string(),
+            true,
+        );
+    }
+
+    config.set_world_id(world_id.to_string());
+
+    let res = set_config(bot.get_db(), config).await;
+
+    log_result(&res, "Set Admins");
+
+    quick_create_interaction_response(format!("Successfully set World Id to: {}", world_id), true)
 }

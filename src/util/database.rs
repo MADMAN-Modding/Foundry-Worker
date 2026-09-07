@@ -19,11 +19,12 @@ pub async fn set_config(
         admins.push(admin.get() as i64);
     }
 
-    let result = sqlx::query(r#"REPLACE INTO config (guid, dms, admins, foundry_status_channel) VALUES (?1, ?2, ?3, ?4)"#)
+    let result = sqlx::query(r#"REPLACE INTO config (guid, dms, admins, foundry_status_channel, world_id) VALUES (?1, ?2, ?3, ?4, ?5)"#)
         .bind(config.get_guid().get() as i64)
         .bind(serde_json::to_value(dms).unwrap())
         .bind(serde_json::to_value(admins).unwrap())
         .bind(config.get_foundry_status_channel().get() as i64)
+        .bind(config.get_world_id())
         .execute(db)
         .await;
 

@@ -1,0 +1,1 @@
+ALTER TABLE config ADD COLUMN world_id VARCHAR DEFAULT ""

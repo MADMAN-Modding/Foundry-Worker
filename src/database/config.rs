@@ -14,7 +14,8 @@ pub struct Config {
     guid: GuildId,
     dms: Vec<UserId>,
     admins: Vec<UserId>,
-    foundry_status_channel: ChannelId
+    foundry_status_channel: ChannelId,
+    world_id: String
 }
 
 impl Config {
@@ -23,18 +24,20 @@ impl Config {
         guid: GuildId,
         dms: Vec<UserId>,
         admins: Vec<UserId>,
-        foundry_status_channel: ChannelId
+        foundry_status_channel: ChannelId,
+        world_id: String,
     ) -> Self {
         Self {
             guid,
             dms,
             admins,
-            foundry_status_channel
+            foundry_status_channel,
+            world_id
         }
     }
 
     pub fn default() -> Self {
-        Self { guid: GuildId::default(), dms: Vec::new(), admins: Vec::new(), foundry_status_channel: ChannelId::default() }
+        Self { guid: GuildId::default(), dms: Vec::new(), admins: Vec::new(), foundry_status_channel: ChannelId::default(), world_id: String::new() }
     }
 
     /// Checks for user to be a DM
@@ -64,6 +67,10 @@ impl Config {
         self.admins.clone()
     }
 
+    pub fn get_world_id(&self) -> String {
+        self.world_id.clone()
+    }
+
     pub fn set_foundry_status_channel(&mut self, foundry_status_channel: ChannelId) {
         self.foundry_status_channel = foundry_status_channel;
     }
@@ -78,6 +85,10 @@ impl Config {
 
     pub fn set_guid(&mut self, guid: GuildId) {
         self.guid = guid;
+    }
+
+    pub fn set_world_id(&mut self, world_id: String) {
+        self.world_id = world_id
     }
 }
 
@@ -106,6 +117,7 @@ impl<'r> FromRow<'r, SqliteRow> for Config {
         let dms_json: String = row.try_get("dms")?;
         let admins_json: String = row.try_get("admins")?;
         let foundry_status_channel: i64 = row.try_get("foundry_status_channel")?;
+        let world_id: String = row.try_get("world_id")?;
 
         let dms: Vec<i64> =
             serde_json::from_str(&dms_json).map_err(|e| sqlx::Error::ColumnDecode {
@@ -126,6 +138,7 @@ impl<'r> FromRow<'r, SqliteRow> for Config {
                 .map(|id| UserId::new(id as u64))
                 .collect(),
             foundry_status_channel: ChannelId::new(foundry_status_channel as u64),
+            world_id
         })
     }
 }

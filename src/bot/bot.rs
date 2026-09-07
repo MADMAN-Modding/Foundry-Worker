@@ -11,9 +11,8 @@ use tokio::sync::Mutex;
 
 use crate::{
     bot::commands::{
-        add_admin, add_dm, create_commands, remove_admin, remove_dm, set_foundry_status_channel,
-    },
-    util::{database::load, logging::log_result, wrappers::quick_create_interaction_response},
+        add_admin, add_dm, create_commands, remove_admin, remove_dm, set_foundry_status_channel, set_world_id,
+    }, util::{database::load, logging::log_result, wrappers::quick_create_interaction_response},
 };
 
 #[derive(Clone)]
@@ -97,6 +96,8 @@ impl EventHandler for Bot {
                     .create_response(&context.http, add_admin(self, &context, &command).await),
                 "remove_admin" => command
                     .create_response(&context.http, remove_admin(self, &context, &command).await),
+                "set_world_id" => command
+                    .create_response(&context.http, set_world_id(self, &context, &command).await),
                 _ => command.create_response(
                     &context.http,
                     quick_create_interaction_response("Invalid Command".to_string(), true),
