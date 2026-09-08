@@ -1,8 +1,8 @@
 use serenity::all::UserId;
 
-use crate::getters;
+use crate::getset;
 
-getters! {
+getset! {
 pub struct FoundryUser {
     discord_id: UserId,
     foundry_id: String,

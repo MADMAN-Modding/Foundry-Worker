@@ -5,14 +5,14 @@ use sqlx::{
     FromRow, Row, sqlite::SqliteRow,
 };
 
-use crate::getters;
+use crate::getset;
 
-getters! {
+getset! {
 /// Config Structure to Represent Row in config table
 ///
-/// |   guid   | dms             | admins      | foundry_status_channel          |
-/// |----------|-----------------|-------------|---------------------------------|
-/// | Guild ID | Dungeon Masters | Admin Users | Channel to Send Foundry Updates |
+/// |   guid   | dms             | admins      | foundry_status_channel          | World Id                |
+/// |----------|-----------------|-------------|---------------------------------|-------------------------|
+/// | Guild ID | Dungeon Masters | Admin Users | Channel to Send Foundry Updates | ID of the Foundry World |
 pub struct Config {
     guid: GuildId,
     dms: Vec<UserId> => clone,
@@ -52,26 +52,6 @@ impl Config {
     /// Checks for user to be an admin
     pub fn check_for_admin(&self, id: UserId) -> bool {
         self.admins.contains(&id)
-    }
-
-    pub fn set_foundry_status_channel(&mut self, foundry_status_channel: ChannelId) {
-        self.foundry_status_channel = foundry_status_channel;
-    }
-
-    pub fn set_dms(&mut self, dms: Vec<UserId>) {
-        self.dms = dms
-    }
-
-    pub fn set_admins(&mut self, admins: Vec<UserId>) {
-        self.admins = admins;
-    }
-
-    pub fn set_guid(&mut self, guid: GuildId) {
-        self.guid = guid;
-    }
-
-    pub fn set_world_id(&mut self, world_id: String) {
-        self.world_id = world_id
     }
 }
 

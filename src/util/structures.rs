@@ -3,7 +3,7 @@
 ///
 /// Example:
 /// ```
-/// getters! {
+/// setget! {
 ///     pub struct Player {
 ///         name: String => clone,
 ///         hp: i32 => copy,
@@ -12,7 +12,7 @@
 /// }
 /// ```
 #[macro_export]
-macro_rules! getters {
+macro_rules! getset {
     (
         $(#[$struct_attr:meta])*
         $struct_visibility:vis struct $struct_name:ident {
@@ -33,6 +33,10 @@ macro_rules! getters {
         impl $struct_name {
             $(
                 $crate::__getter_impl!($field_name, $field_type $(, $mode)?);
+
+                paste::paste! {
+                    pub fn [<set_ $field_name>](&mut self, $field_name: $field_type) {self.$field_name = $field_name}
+                }
             )*
         }
     };
