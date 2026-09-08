@@ -73,7 +73,7 @@ impl ConnectionChecker {
             if config.is_ok() {
                 let config = config.unwrap();
 
-                let connected = self.test_connection(config.get_world_id()).await.unwrap_or(false);
+                let connected = self.test_connection(config.get_world_id().to_string()).await.unwrap_or(false);
 
                 self.bot.send_disconnect(connected).await;
             }
