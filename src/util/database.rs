@@ -1,9 +1,10 @@
 use log::debug;
-use sqlx::{AssertSqlSafe, Pool, Sqlite, sqlite::SqliteQueryResult};
+use serenity::all::UserId;
+use sqlx::{AssertSqlSafe, Pool, Row, Sqlite, sqlite::SqliteQueryResult};
 
-use crate::{database::config::Config, util::logging::log_result};
+use crate::{api::foundry_user::FoundryUser, database::config::Config, util::logging::log_result};
 
-pub async fn set_config(
+pub async fn insert_struct(
     db: &Pool<Sqlite>,
     config: Config,
 ) -> Result<SqliteQueryResult, sqlx::Error> {
@@ -31,6 +32,45 @@ pub async fn set_config(
     log_result(&result, "Set Foundry Status Channel");
 
     result
+}
+
+pub async fn insert_foundry_user(
+    db: &Pool<Sqlite>,
+    user: FoundryUser,
+) -> Result<SqliteQueryResult, sqlx::Error> {
+    sqlx::query(
+        "INSERT INTO foundry_users (discord_id, foundry_id, actor_id)
+         VALUES (?, ?, ?)
+         ON CONFLICT(discord_id) DO UPDATE SET
+            foundry_id = excluded.foundry_id,
+            actor_id = excluded.actor_id",
+    )
+    .bind(user.get_discord_id().get() as i64)
+    .bind(user.get_foundry_id())
+    .bind(user.get_actor_id())
+    .execute(db)
+    .await
+}
+
+// For /sheet later
+pub async fn load_foundry_user(
+    db: &Pool<Sqlite>,
+    discord_id: UserId,
+) -> Result<Option<FoundryUser>, sqlx::Error> {
+    let row = sqlx::query(
+        "SELECT foundry_id, actor_id FROM foundry_users WHERE discord_id = ?",
+    )
+    .bind(discord_id.get() as i64)
+    .fetch_optional(db)
+    .await?;
+
+    Ok(row.map(|row| {
+        FoundryUser::new(
+            discord_id,
+            row.get("foundry_id"),
+            row.get("actor_id")
+        )
+    }))
 }
 
 pub async fn load(db: &Pool<Sqlite>) -> Result<Config, sqlx::Error> {

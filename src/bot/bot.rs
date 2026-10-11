@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use log::debug;
 use serenity::{
     all::{Command, Context, CreateEmbed, CreateMessage, EventHandler, Http, Interaction, Ready},
     async_trait,
@@ -11,7 +10,10 @@ use tokio::sync::Mutex;
 
 use crate::{
     bot::commands::{
-        add_admin, add_dm, create_commands, remove_admin, remove_dm, set_foundry_status_channel, set_world_id,
+        add_admin, add_dm, create_commands, remove_admin, remove_dm, set_foundry_status_channel,
+        set_world_id,
+    }, commands::{
+        character::{bind_foundry_select, bind_foundry_user}, sheet::{sheet, sheet_page},
     }, util::{database::load, logging::log_result, wrappers::quick_create_interaction_response},
 };
 
@@ -50,8 +52,6 @@ impl Bot {
                 .color(Color::DARK_GREEN);
             let builder = CreateMessage::new().embed(embed).tts(true);
 
-            debug!("Stat ChannelId: {}", channel_id.get());
-
             let res = channel_id.send_message(&self.http, builder).await;
 
             log_result(&res, "Sent Reconnect Update");
@@ -80,26 +80,46 @@ impl Bot {
 
 #[async_trait]
 impl EventHandler for Bot {
-    async fn interaction_create(&self, context: Context, interaction: Interaction) {
+    async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
+        if let Some(component) = interaction.as_message_component() {
+            if component.data.custom_id.starts_with("bind_foundry:") {
+                component
+                    .create_response(&ctx.http, bind_foundry_select(self, &ctx, component).await)
+                    .await
+                    .ok();
+            }
+            if component.data.custom_id.starts_with("sheet:") {
+                component
+                    .create_response(&ctx.http, sheet_page(self, &ctx, component).await)
+                    .await
+                    .ok();
+            }
+        }
+
         if let Some(command) = interaction.command() {
             match command.data.name.as_str() {
                 "set_foundry_status_channel" => command.create_response(
-                    &context.http,
-                    set_foundry_status_channel(self, &context, &command).await,
+                    &ctx.http,
+                    set_foundry_status_channel(self, &ctx, &command).await,
                 ),
-                "add_dm" => {
-                    command.create_response(&context.http, add_dm(self, &context, &command).await)
+                "add_dm" => command.create_response(&ctx.http, add_dm(self, &ctx, &command).await),
+                "remove_dm" => {
+                    command.create_response(&ctx.http, remove_dm(self, &ctx, &command).await)
                 }
-                "remove_dm" => command
-                    .create_response(&context.http, remove_dm(self, &context, &command).await),
-                "add_admin" => command
-                    .create_response(&context.http, add_admin(self, &context, &command).await),
-                "remove_admin" => command
-                    .create_response(&context.http, remove_admin(self, &context, &command).await),
-                "set_world_id" => command
-                    .create_response(&context.http, set_world_id(self, &context, &command).await),
+                "add_admin" => {
+                    command.create_response(&ctx.http, add_admin(self, &ctx, &command).await)
+                }
+                "remove_admin" => {
+                    command.create_response(&ctx.http, remove_admin(self, &ctx, &command).await)
+                }
+                "set_world_id" => {
+                    command.create_response(&ctx.http, set_world_id(self, &ctx, &command).await)
+                }
+                "bind_foundry_user" => command
+                    .create_response(&ctx.http, bind_foundry_user(self, &ctx, &command).await),
+                "sheet" => command.create_response(&ctx.http, sheet(self, &ctx, &command).await),
                 _ => command.create_response(
-                    &context.http,
+                    &ctx.http,
                     quick_create_interaction_response("Invalid Command".to_string(), true),
                 ),
             }

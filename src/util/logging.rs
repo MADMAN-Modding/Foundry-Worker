@@ -16,4 +16,4 @@ pub fn log_option<V>(option: &Option<V>, message: &str) {
         Some(_) => info!("{}", message),
         None => warn!("Failed to: {}", message)
     }
-} 
+}

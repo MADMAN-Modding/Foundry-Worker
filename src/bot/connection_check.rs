@@ -19,7 +19,7 @@ impl ConnectionChecker {
     }
 
     async fn test_connection(&self, world_id: String) -> reqwest::Result<bool> {
-        let endpoint = constants::ENDPOINT.get().unwrap().clone();
+        let endpoint = constants::URL.get().unwrap().clone();
 
         let request_url = format!("{}/clients", endpoint);
 

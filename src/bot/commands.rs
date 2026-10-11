@@ -8,12 +8,8 @@ use serenity::{
 };
 
 use crate::{
-    bot::bot::Bot,
-    database::config::Config,
-    util::{
-        database::{load, set_config},
-        logging::log_result,
-        wrappers::{get_user_arg, quick_create_interaction_response},
+    bot::bot::Bot, commands::{character::bind_foundry_user_command, sheet::sheet_command}, database::config::Config, util::{
+        database::{insert_struct, load}, logging::log_result, wrappers::{get_user_arg, quick_create_interaction_response},
     },
 };
 
@@ -25,6 +21,8 @@ pub fn create_commands() -> Vec<CreateCommand> {
         add_admin_command(),
         remove_admin_command(),
         set_world_id_command(),
+        bind_foundry_user_command(),
+        sheet_command()
     ]
 }
 
@@ -97,7 +95,7 @@ pub async fn set_foundry_status_channel(
 
     config.set_foundry_status_channel(channel_id.id);
 
-    set_config(bot.get_db(), config).await.unwrap();
+    insert_struct(bot.get_db(), config).await.unwrap();
 
     let embed = CreateEmbed::new()
         .title("This is now the FoundryVTT Status Channel")
@@ -175,7 +173,7 @@ pub async fn add_dm(
 
         config.set_dms(dms);
 
-        let res = set_config(bot.get_db(), config).await;
+        let res = insert_struct(bot.get_db(), config).await;
         log_result(&res, "Set DMs");
     }
 
@@ -254,7 +252,7 @@ pub async fn remove_dm(
 
     config.set_dms(dms.clone());
 
-    let res = set_config(bot.get_db(), config).await;
+    let res = insert_struct(bot.get_db(), config).await;
     log_result(&res, "Set DMs");
 
     quick_create_interaction_response(format!("Removed <@{}> as a DM", target_user.id), true)
@@ -297,7 +295,7 @@ pub async fn add_admin(
 
         config.set_admins(admins);
 
-        let res = set_config(bot.get_db(), config).await;
+        let res = insert_struct(bot.get_db(), config).await;
         log_result(&res, "Set Admins");
     }
 
@@ -356,7 +354,7 @@ pub async fn remove_admin(
 
     config.set_admins(admins.clone());
 
-    let res = set_config(bot.get_db(), config).await;
+    let res = insert_struct(bot.get_db(), config).await;
     log_result(&res, "Set Admins");
 
     quick_create_interaction_response(format!("Removed <@{}> as an Admin", target_user.id), true)
@@ -425,7 +423,7 @@ pub async fn set_world_id(
 
     config.set_world_id(world_id.to_string());
 
-    let res = set_config(bot.get_db(), config).await;
+    let res = insert_struct(bot.get_db(), config).await;
 
     log_result(&res, "Set Admins");
 
