@@ -26,9 +26,22 @@ services:
       - APP_ENV=production
     volumes:
       - ./data:/app/data
+
     ports:
       - "3010:3010"
     restart: unless-stopped
+  bot:
+    image: rust:latest
+    container_name: foundry-worker
+
+    depends_on:
+      - relay
+
+    volumes:
+      - ./bot_data:/app/data
+
+    entrypoint: /app/data/run.sh
+
     # ── GPU acceleration ─────────────────────────────────────────────────────
     # Requires Docker Engine (CE) on Linux. Docker Desktop does not support
     # NVIDIA or DRI GPU passthrough.

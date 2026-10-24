@@ -1,0 +1,35 @@
+import { dir_exists } from "std/fs"
+
+let repo_name = "Foundry-Worker"
+
+let cloned = dir_exists("/app/data/{repo_name}")
+
+if not cloned {
+    echo("Repo not cloned, cloning now...")
+
+    trust $ cd /app/data/ $
+
+    trust $ git clone https://github.com/MADMAN-Modding/{repo_name} $
+
+    echo("Repo cloned.")
+}
+
+trust $ cd /app/data/{repo_name} $
+
+if cloned {
+    echo("Repo already cloned, pulling latest...")
+
+    trust $ git pull $
+
+    echo("Latest pulled.")
+}
+
+echo("Copying .env...")
+
+trust $ cp .env /{repo_name}$
+
+echo("Copied .env.")
+
+echo("Running bot, ensure .env is set correctly")
+
+trust $ cargo run --release $

@@ -5,3 +5,4 @@ database.sqlite
 data
 .vscode
 .DS_Store
+docker/bot_data/Foundry-Worker
