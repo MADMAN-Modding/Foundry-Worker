@@ -1,9 +1,9 @@
 use std::{sync::Arc, time::Duration};
 
-use log::{info, warn};
-use serde_json::Value;
+use log::info;
 
 use crate::{
+    api::pull_character_data::resolve_client_id,
     bot::bot::Bot,
     constants,
     util::{database::load, logging::log_result},
@@ -18,47 +18,18 @@ impl ConnectionChecker {
         Self { bot }
     }
 
+    /// Whether the world has an online client connected to the relay
     async fn test_connection(&self, world_id: String) -> reqwest::Result<bool> {
-        let endpoint = constants::URL.get().unwrap().clone();
+        info!(
+            "Testing connection for endpoint: {}/clients",
+            constants::URL.get().unwrap()
+        );
 
-        let request_url = format!("{}/clients", endpoint);
-
-        info!("Testing connection for endpoint: {}", request_url);
-
-        let timeout = Duration::from_secs(5);
-        let client = reqwest::ClientBuilder::new().timeout(timeout).build()?;
-        let response = client
-            .get(request_url)
-            .header("x-api-key", constants::API_KEY.get().unwrap())
-            .send()
-            .await;
+        let response = resolve_client_id(&world_id).await;
 
         log_result(&response, "Format Connection Request");
 
-        // Change to Response data type and throw error if it fails
-        let response = response?;
-
-        // Parse payload
-        let payload: Value = response
-            .json()
-            .await
-            .map_err(|_| {
-                warn!("Invalid JSON in request response");
-                return false;
-            })
-            .unwrap();
-
-        let mut success: bool = false;
-
-        for client in payload["clients"].as_array().unwrap().iter() {
-            let payload_world_id = client.get("worldId").unwrap().as_str().unwrap();
-
-            if payload_world_id == world_id {
-                success = client["isOnline"].as_bool().unwrap();
-            }
-        }
-
-        Ok(success)
+        response.map(|client| client.is_some())
     }
 
     pub fn start_thread(self) {
@@ -68,12 +39,11 @@ impl ConnectionChecker {
     /// Runs the loop for checking endpoints
     async fn thread_runner(&self) {
         loop {
-            let config = load(self.bot.get_db()).await;
-
-            if config.is_ok() {
-                let config = config.unwrap();
-
-                let connected = self.test_connection(config.get_world_id().to_string()).await.unwrap_or(false);
+            if let Ok(config) = load(self.bot.get_db()).await {
+                let connected = self
+                    .test_connection(config.get_world_id())
+                    .await
+                    .unwrap_or(false);
 
                 self.bot.send_disconnect(connected).await;
             }
